@@ -5,6 +5,7 @@
 //  Created by Piotr Woźniak on 13/07/2023.
 //
 import SwiftUI
+import AuthenticationServices
 
 struct Login: View {
     @StateObject var loginModel: LoginViewModel = .init()
@@ -18,7 +19,7 @@ struct Login: View {
                 
                 (Text("Welcome,")
                     .foregroundColor(.black)
-                + Text("\nLogin to continue")
+                 + Text("\nLogin to continue")
                     .foregroundColor(.gray)
                 )
                 .font(.title)
@@ -70,6 +71,43 @@ struct Login: View {
                     }
                 }
                 .padding(.top, 30)
+                
+                Text("(OR)")
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 30)
+                    .padding(.bottom, 20)
+                    .padding(.leading, -60)
+                    .padding(.horizontal)
+                
+                HStack(spacing: 8) {
+                    CustomButton(isGoogle: false)
+                    .overlay {
+                        SignInWithAppleButton { (request) in
+                            loginModel.nonce = randomNonceString()
+                            request.requestedScopes = [.email, .fullName ]
+                            request.nonce = sha256(loginModel.nonce)
+                        } onCompletion: { (result) in
+                            switch result {
+                            case .success(let user):
+                                print("success")
+                                guard let credential = user.credential as?
+                                        ASAuthorizationAppleIDCredential else{
+                                    print("error with firebase")
+                                    return
+                                }
+                                loginModel.appleAuthenticate(credential: credential)
+                            case.failure(let error):
+                                print(error.localizedDescription)
+                            }
+                        }
+                        .signInWithAppleButtonStyle(.white)
+                        .frame(height: 55)
+                        .blendMode(.overlay)
+                    }
+                    .clipped()
+                }
+                .padding(.trailing, 50)
             }
             .padding(.leading, 60)
             .padding(.vertical, 15)
@@ -78,11 +116,40 @@ struct Login: View {
             LinearGradient(gradient: Gradient(stops: [
                 Gradient.Stop(color: .white, location: 0.4),
                 Gradient.Stop(color: .black.opacity(0.6), location: 1.3),
-                ]), startPoint: .top, endPoint: .bottom)
+            ]), startPoint: .top, endPoint: .bottom)
         )
         .alert(loginModel.errorMessage, isPresented: $loginModel.showError) { }
     }
+    
+    @ViewBuilder
+    func CustomButton(isGoogle: Bool) -> some View {
+        HStack {
+            Group {
+                if isGoogle {
+                    Image("Google")
+                        .resizable()
+                } else {
+                    Image(systemName: "applelogo")
+                        .resizable()
+                }
+            }
+            .scaledToFit()
+            .frame(width: 25, height: 25)
+            .frame(height: 45)
+        
+            Text(isGoogle ? "Google Sign in" : "Apple Sign in")
+                .font(.callout)
+                .lineLimit(1)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 15)
+        .background {
+            Rectangle()
+                .fill(.black)
+        }
+    }
 }
+
 
 struct Login_Previews: PreviewProvider {
     static var previews: some View {
