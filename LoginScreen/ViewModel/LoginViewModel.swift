@@ -9,6 +9,7 @@ import SwiftUI
 import Firebase
 import CryptoKit
 import AuthenticationServices
+import GoogleSignIn
 
 class LoginViewModel: ObservableObject {
     @Published var mobileNo: String = ""
@@ -89,11 +90,38 @@ class LoginViewModel: ObservableObject {
             withAnimation(.easeInOut) { self.logStatus = true }
         }
     }
+    
+    func logGoogleUser(user: GIDGoogleUser) {
+        Task {
+            do {
+                guard let idToken = user.idToken else { return }
+                let accessToken = user.accessToken
+                
+                let credential = GoogleAuthProvider.credential(withIDToken: idToken.tokenString, accessToken: accessToken.tokenString)
+                
+                try await Auth.auth().signIn(with: credential)
+                
+                print("Success Google!")
+                await MainActor.run(body: {
+                    withAnimation(.easeInOut) { logStatus = true }
+                })
+            } catch {
+                await handleError(error: error)
+            }
+        }
+    }
 }
 
 extension UIApplication {
     func closeKeyboard() {
         sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
+    func rootController() -> UIViewController {
+        guard let window = connectedScenes.first as? UIWindowScene else { return .init() }
+        guard let viewController = window.windows.last?.rootViewController else { return .init() }
+        
+        return viewController
     }
 }
 

@@ -6,6 +6,9 @@
 //
 import SwiftUI
 import AuthenticationServices
+import GoogleSignIn
+import GoogleSignInSwift
+import Firebase
 
 struct Login: View {
     @StateObject var loginModel: LoginViewModel = .init()
@@ -13,9 +16,12 @@ struct Login: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 15) {
-                Image(systemName: "triangle")
-                    .font(.system(size: 38))
-                    .foregroundColor(.black.opacity(0.4))
+                Rectangle()
+                    .fill(.black)
+                    .frame(width: 3, height: 50)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.leading, -60)
+                    .padding(.vertical, 10)
                 
                 (Text("Welcome,")
                     .foregroundColor(.black)
@@ -106,8 +112,32 @@ struct Login: View {
                         .blendMode(.overlay)
                     }
                     .clipped()
+                    
+                    CustomButton(isGoogle: true)
+                    .overlay {
+                        if let clientID = FirebaseApp.app()?.options.clientID {
+                            GoogleSignInButton {
+                                let config = GIDConfiguration(clientID: clientID)
+                                GIDSignIn.sharedInstance.configuration = config
+                                
+                                GIDSignIn.sharedInstance.signIn(withPresenting: UIApplication.shared.rootController()) { user, error in
+                                    if let error = error {
+                                        print(error.localizedDescription)
+                                        return
+                                    }
+                                    
+                                    if let user {
+                                        loginModel.logGoogleUser(user: user.user)
+                                    }
+                                }
+                            }
+                            .blendMode(.overlay)
+                        }
+                    }
+                    .clipped()
                 }
-                .padding(.trailing, 50)
+                .padding(.leading, -60)
+                .frame(maxWidth: .infinity)
             }
             .padding(.leading, 60)
             .padding(.vertical, 15)
@@ -128,6 +158,7 @@ struct Login: View {
                 if isGoogle {
                     Image("Google")
                         .resizable()
+                        .renderingMode(.template)
                 } else {
                     Image(systemName: "applelogo")
                         .resizable()
